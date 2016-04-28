@@ -1,0 +1,9 @@
+---
+- hosts: web_node
+  roles:
+    - fact-check
+  become: True
+- hosts: load_balancer
+  roles:
+    - ha
+  become: True

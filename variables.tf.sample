@@ -1,0 +1,27 @@
+variable "do_token" {
+    default = ""
+}
+
+variable "project" {
+    default = ""
+}
+
+variable "region" {
+    default = ""
+}
+
+variable "keys" {
+    default = ""
+}
+
+variable "private_key_path" {
+  default = ""
+}
+
+variable "ssh_fingerprint" {
+  default = ""
+}
+
+variable "public_key" {
+  default = ""
+}
