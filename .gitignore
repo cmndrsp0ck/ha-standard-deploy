@@ -1,0 +1,10 @@
+.DS_Store
+site.retry
+*.tfstate.*
+*.tfstate
+*.tfvars
+group_vars/load_balancer
+*.pyc
+terraform.tfvars_bak
+.key.txt
+variables.tf
