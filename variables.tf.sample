@@ -6,8 +6,15 @@ variable "project" {
     default = ""
 }
 
+/* region choices include: nyc1, nyc2, nyc3, ams2, ams3, sfo1, sgp1, lon1, fra1, tor1 */
 variable "region" {
     default = ""
+}
+
+/* some image slugs include: ubuntu-16-04-x64, ubuntu-14-04-x64.
+Keep in mind the associated Ansible playbook was written to be executed on Ubuntu. */
+variable "image_slug" {
+    default = "ubuntu-16-04-x64"
 }
 
 variable "keys" {
@@ -27,5 +34,5 @@ variable "public_key" {
 }
 
 variable "node_count" {
-  default = 
+  default =
 }

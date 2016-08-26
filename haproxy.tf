@@ -2,7 +2,7 @@
 
 resource "digitalocean_droplet" "load_balancer" {
 	count = 2
-	image = "ubuntu-14-04-x64"
+	image = "${var.image_slug}"
 	name = "${var.project}-lb-${count.index + 1}"
 	region = "${var.region}"
 	size = "1gb"
@@ -19,7 +19,7 @@ resource "digitalocean_droplet" "load_balancer" {
 
 resource "digitalocean_droplet" "web_node" {
 	count = "${var.node_count}"
-	image = "ubuntu-14-04-x64"
+	image = "${var.image_slug}"
 	name = "${var.project}-web-${count.index + 1}"
 	region = "${var.region}"
 	size = "512mb"

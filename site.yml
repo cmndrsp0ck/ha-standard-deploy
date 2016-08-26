@@ -1,8 +1,8 @@
 ---
 - hosts: web_node
-  roles:
-    - fact-check
+  gather_facts: yes
   become: True
+
 - hosts: load_balancer
   roles:
     - ha

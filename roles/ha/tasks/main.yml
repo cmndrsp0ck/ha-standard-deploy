@@ -1,4 +1,7 @@
 ---
+- name: set up PPA
+  apt_repository: repo="ppa:vbernat/haproxy-1.6" state=present
+
 - name: install heartbeat and haproxy components
   apt: name="{{ item }}" state=present update_cache=yes cache_valid_time=3600
   with_items:
