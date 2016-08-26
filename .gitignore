@@ -5,5 +5,6 @@ site.retry
 *.tfvars
 group_vars/all/load_balancer
 group_vars/all/keys
+group_vars/all/vars
 *.pyc
 .key.txt
