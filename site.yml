@@ -1,5 +1,5 @@
 ---
-- hosts: web_node
+- hosts: all
   gather_facts: yes
   become: True
 
