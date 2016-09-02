@@ -74,8 +74,8 @@ EOF
   read -p "Enter in the ssh key id(s) you want to use  (comma separated): " ssh_key_id;
 
   read -p "Enter in a password to be used for ansible-vault: " vault_pass;
-  # create lb_auth_key
-  lb_auth_key=$(dd if='/dev/urandom' bs=512 count=1 2>'/dev/null' | openssl sha1 | awk '{print $2}')
+  # create ha_auth_key
+  ha_auth_key=$(dd if='/dev/urandom' bs=512 count=1 2>'/dev/null' | openssl sha1 | awk '{print $2}')
 
 }
 
@@ -123,7 +123,7 @@ cat << EOF > group_vars/all/load_balancer
 do_token: "{{ vault_do_token }}"
 
 # Generated ha auth key. Consult README.md for how to generate.
-lb_auth_key: "{{ vault_lb_auth_key }}"
+ha_auth_key: "{{ vault_ha_auth_key }}"
 EOF
 }
 
@@ -135,7 +135,7 @@ function ansibleVault() {
 cat << EOF > /tmp/${tmp_pass_file}
 ---
 vault_do_token: ${terraform_vars[do_token]}
-vault_lb_auth_key: ${lb_auth_key}
+vault_ha_auth_key: ${ha_auth_key}
 EOF
 
   echo "${vault_pass}" > ${HOME}/.vaultpass.txt;
