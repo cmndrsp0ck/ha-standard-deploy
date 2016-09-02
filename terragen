@@ -156,7 +156,7 @@ function deployNow() {
                   done
                   ansible-playbook -i /usr/local/bin/terraform-inventory site.yml;
                   fip=$(terraform state show digitalocean_floating_ip.fip | grep ip_address | cut -d" " -f3);
-                  echo -e "\n Congratulations! You now have your initial load ballancers and backend nodes set up. Your public floating IP is ${fip}.";
+                  echo -e "\n Congratulations! You now have your initial load balancers and backend nodes set up. Your public floating IP is ${fip}.";
                   valid=true;
             ;;
         "N"|"n")  echo -e "\nTo complete your deployment, navigate over to ${project_dir} and execute 'terraform apply', then 'ansible-playbook -i /usr/local/bin/terraform-inventory site.yml;'. Goodbye!";
