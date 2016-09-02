@@ -14,7 +14,7 @@ image_slug = "ubuntu-16-04-x64"
 /* SSH key ID */
 keys = ""
 
-/* Path to private key file on your local system. eg: /home/user/.ssh/id_rsa)
+/* Path to private key file on your local system. eg: /home/user/.ssh/id_rsa) */
 private_key_path = ""
 
 /* You can execute the following to grab your SSH key fingerprint - ssh-keygen -lf ~/.ssh/id_rsa -E md5 */
