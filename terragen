@@ -71,7 +71,7 @@ EOF
   doctl compute ssh-key create $(hostname -f) --public-key "${public_key}";
   # List ssh key ids
   doctl compute ssh-key list
-  read -p "Enter in the ssh key id(s) you want to use  (comma separated): " ssh_key_id;
+  read -p "Enter in the ssh key if for this Droplet's hostname: " ssh_key_id;
 
   read -p "Enter in a password to be used for ansible-vault: " vault_pass;
   # create ha_auth_key
