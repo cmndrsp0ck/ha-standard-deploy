@@ -82,7 +82,7 @@ EOF
 # Set up project directory
 function projectCreate() {
   mkdir -p ${project_dir};
-  git clone https://github.com/barajasfab/nginx-lb-deploy ${project_dir}/;
+  git clone https://github.com/barajasfab/ha-standard-deploy ${project_dir}/;
   cd ${project_dir};
 }
 
