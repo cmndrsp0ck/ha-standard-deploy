@@ -25,3 +25,7 @@ public_key = ""
 
 /* Enter the number of web nodes you wish to provision */
 node_count = "x"
+
+node_size = "1gb"
+
+lb_size = "2gb"

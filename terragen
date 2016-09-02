@@ -1,0 +1,177 @@
+#!/bin/bash
+
+# Declare variables
+declare project_name;
+declare ssh_key_id;
+declare -A terraform_vars=([do_token]="" [region]="" [image_slug]="" [load_balancer_size]="" [backend_node_size]="" [backend_node_count]="");
+declare -a tfvars_order=("do_token" "region" "image_slug" "load_balancer_size" "backend_node_size" "backend_node_count");
+
+# Get user input for Terraform variables
+function setVars() {
+  echo -e "Let's set up your Terraform variables.\n";
+  # Check for existing project folder
+  until [[ "${valid}" ]]; do
+    read -p "Please enter in your project name: " project_name;
+    if [[ -d "${HOME}/workspace/${project_name}" ]]; then
+      echo -e "\nLooks like project root ${HOME}/workspace/${project_name} already exists.\nTry using another name.\n";
+    else
+      project_dir=${HOME}/workspace/${project_name};
+      valid=true;
+    fi
+  done
+
+  unset valid;
+
+  # Check for SSH key
+  if [[ -f ${HOME}/.ssh/id_rsa ]]; then
+    until [[ "${valid}" ]]; do
+      read -p "${HOME}/.ssh/id_rsa has been located. Would you like to use it for your configuration? y/n: " response;
+      case "${response}" in
+        "Y"|"y")  private_key_path="${HOME}/.ssh/id_rsa";
+                  ssh_fingerprint=$(ssh-keygen -l -E md5 -f ~/.ssh/id_rsa | awk '{print $2}' | cut -d: -f 2-);
+                  if [[ -f "${HOME}/.ssh/id_rsa.pub" ]]; then
+                    public_key=$(cat ${HOME}/.ssh/id_rsa.pub);
+                  else
+                    echo -e "Unable to locate ${HOME}/.ssh/id_rsa.pub. Please create a new key pair or place them into ${HOME}/.ssh/";
+                    exit 2;
+                  fi
+                  valid=true;
+                  ;;
+        "N"|"n")
+                  read -p "Please enter in the full path to your private SSH key: " private_key_path;
+                  ssh_fingerprint=$(ssh-keygen -l -E md5 -f ~/.ssh/id_rsa | awk '{print $2}' | cut -d: -f 2-);
+                  public_key=$(cat ${private_key_path}.*pub);
+                  valid=true;
+                  ;;
+        *)        echo -e "\nThe choice you entered was not valid. Try again.\n"
+                  ;;
+      esac
+    done
+    unset valid;
+  else
+    ssh-keygen -t rsa -C "$(hostname -f)" -q -N "" -f ${HOME}/.ssh/id_rsa;
+    private_key_path="${HOME}/.ssh/id_rsa";
+    ssh_fingerprint=$(ssh-keygen -l -E md5 -f ~/.ssh/id_rsa | awk '{print $2}' | cut -d: -f 2-);
+    public_key=$(cat ${HOME}/.ssh/id_rsa.pub);
+  fi
+  # Set the remaining variables
+  for x in "${tfvars_order[@]}"; do
+    read -p "please enter in your ${x}: " terraform_vars[${x}];
+  done
+
+  if [[ ! -f ${HOME}/.config/doctl/config.yaml ]]; then
+    mkdir -p ${HOME}/.config/doctl/;
+cat << EOF > ${HOME}/.config/doctl/config.yaml
+access-token: ${do_token}
+output: text
+EOF
+  chmod 600 ${HOME}/.config/doctl/config.yaml;
+  fi
+
+  doctl compute ssh-key create $(hostname -f) --public-key "$(cat ${public_key})"
+  # List ssh key ids
+  doctl compute ssh-key list
+  read -p "Enter in the ssh key id(s) you want to use  (comma separated): " ssh_key_id;
+
+  read -p "Enter in a password to be used for ansible-vault: " vault_pass;
+  # create lb_auth_key
+  lb_auth_key=$(dd if='/dev/urandom' bs=512 count=1 2>'/dev/null' | openssl sha1 | awk '{print $2}')
+
+}
+
+# Set up project directory
+function projectCreate() {
+  mkdir -p ${project_dir};
+  git clone https://github.com/barajasfab/nginx-lb-deploy ${project_dir}/;
+  cd ${project_dir};
+}
+
+# create terraform configuration
+function terraConf() {
+cat << EOF > terraform.tfvars
+do_token = "${terraform_vars[do_token]}"
+
+project = "${project_name}"
+
+/* region choices include: nyc1, nyc2, nyc3, ams2, ams3, sfo1, sgp1, lon1, fra1, tor1 */
+region = "${terraform_vars[region]}"
+
+/* some image slugs include: ubuntu-16-04-x64, ubuntu-14-04-x64.
+Keep in mind the associated Ansible playbook was written to be executed on Ubuntu. */
+image_slug = "${terraform_vars[image_slug]}"
+
+keys = "${ssh_key_id}"
+
+private_key_path = "${private_key_path}"
+
+ssh_fingerprint = "${ssh_fingerprint}"
+
+public_key = "${public_key}"
+
+lb_size = "${terraform_vars[load_balancer_size]}"
+
+node_count = "${terraform_vars[backend_node_count]}"
+
+node_size = "${terraform_vars[backend_node_size]}"
+EOF
+}
+
+# create vars file for Ansible
+function ansibleVars() {
+cat << EOF > group_vars/all/load_balancer
+# DigitalOcean access token
+do_token: "{{ vault_do_token }}"
+
+# Generated ha auth key. Consult README.md for how to generate.
+lb_auth_key: "{{ vault_lb_auth_key }}"
+EOF
+}
+
+# create vault file
+function ansibleVault() {
+  # create temp file
+  tmp_pass_file="pass_$(echo $(( (RANDOM % 30000) + 10000 )))_file";
+
+cat << EOF > /tmp/${tmp_pass_file}
+---
+vault_do_token: ${terraform_vars[do_token]}
+vault_lb_auth_key: ${lb_auth_key}
+EOF
+
+  echo "${vault_pass}" > ${HOME}/.vaultpass.txt;
+  ansible-vault encrypt /tmp/${tmp_pass_file} --output ${project_dir}/group_vars/all/keys --vault-password-file=${HOME}/.vaultpass.txt;
+  rm -f /tmp/${tmp_pass_file};
+}
+
+# prompt user to execute scripts
+function deployNow() {
+  until [[ "${valid}" ]]; do
+    read -p "Would you like to deploy now? y/n: " deploy;
+    case "${deploy}" in
+        "Y"|"y")  terraform apply;
+                  echo -en "\nWaiting for cloud-config to complete.";
+                  for i in {1..45}; do
+                    printf ".";
+                    sleep 1;
+                  done
+                  ansible-playbook -i /usr/local/bin/terraform-inventory site.yml;
+                  fip=$(terraform state show digitalocean_floating_ip.fip | grep ip_address | cut -d" " -f3);
+                  echo -e "\n Congratulations! You now have your initial load ballancers and backend nodes set up. Your public floating IP is ${fip}.";
+                  valid=true;
+            ;;
+        "N"|"n")  echo -e "\nTo complete your deployment, navigate over to ${project_dir} and execute 'terraform apply', then 'ansible-playbook -i /usr/local/bin/terraform-inventory site.yml;'. Goodbye!";
+                  valid=true;
+            ;;
+        *)        echo -e "\nPlease enter in a valid choice.\n"
+            ;;
+    esac
+  done
+}
+
+# Execute functions
+setVars;
+projectCreate;
+terraConf;
+ansibleVars;
+ansibleVault;
+deployNow;

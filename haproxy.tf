@@ -5,7 +5,7 @@ resource "digitalocean_droplet" "load_balancer" {
   image              = "${var.image_slug}"
   name               = "${var.project}-lb-${count.index + 1}"
   region             = "${var.region}"
-  size               = "2gb"
+  size               = "${var.lb_size}"
   private_networking = true
   ssh_keys           = ["${var.keys}"]
   user_data          = "${data.template_file.user_data.rendered}"
@@ -23,7 +23,7 @@ resource "digitalocean_droplet" "web_node" {
   image              = "${var.image_slug}"
   name               = "${var.project}-web-${count.index + 1}"
   region             = "${var.region}"
-  size               = "1gb"
+  size               = "${var.node_size}"
   private_networking = true
   ssh_keys           = ["${var.keys}"]
   user_data          = "${data.template_file.user_data.rendered}"

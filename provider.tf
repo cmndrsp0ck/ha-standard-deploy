@@ -17,6 +17,10 @@ variable "public_key" {}
 
 variable "node_count" {}
 
+variable "lb_size" {}
+
+variable "node_size" {}
+
 provider "digitalocean" {
   token = "${var.do_token}"
 }
