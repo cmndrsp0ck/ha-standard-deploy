@@ -7,3 +7,8 @@
   roles:
     - ha
   become: True
+
+- hosts: web_node
+  roles:
+    - nginx_backend
+  become: True

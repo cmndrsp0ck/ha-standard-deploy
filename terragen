@@ -174,6 +174,13 @@ EOF
   unset valid;
 
   read -p "Please enter then number of backend nodes you want to provision: " terraform_vars[backend_node_count];
+
+  # Gather variables for nginx
+  echo -e "\nNow let's set up your backend nginx configuration.\n";
+  read -p "Enter in your application name (ex. myapp1): " app_name;
+  read -p "Enter the path you want to use for your document root: " doc_root;
+  read -p "Enter in the domain name you're going to use (ex. example.com www.example.com): " server_name;
+
 }
 
 # create terraform configuration
@@ -208,6 +215,13 @@ EOF
 
 # create vars file for Ansible
 function ansibleVars() {
+cat << EOF > group_vars/all/vars
+sites:
+  ${app_name}:
+    doc_root: ${doc_root}
+    server_name: ${server_name}
+EOF
+
 cat << EOF > group_vars/all/load_balancer
 # DigitalOcean access token
 do_token: "{{ vault_do_token }}"
