@@ -49,7 +49,7 @@ EOF
   fi
 
   # Add new ssh key to cloud
-  doctl compute ssh-key create $(hostname -f) --public-key "${public_key}";
+  doctl compute ssh-key create $(hostname -f) --public-key "${public_key}" &>/dev/null;
   # Grab ssh key id and ssh key fingerprint
   key_array=($(doctl compute ssh-key list | grep "$(ssh-keygen -lf ${private_key_path} -E md5 | awk '{print $2}'| cut -d: -f2-)"));
 
