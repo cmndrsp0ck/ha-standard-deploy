@@ -1,45 +1,28 @@
 #!/bin/bash
 
 # Declare variables
-declare project_name;
-declare ssh_key_id;
-declare -A terraform_vars=([do_token]="" [region]="" [image_slug]="" [load_balancer_size]="" [backend_node_size]="" [backend_node_count]="");
-declare -a tfvars_order=("do_token" "region" "image_slug" "load_balancer_size" "backend_node_size" "backend_node_count");
+declare -A terraform_vars=([project_name]="" [do_token]="" [region]="" [image_slug]="" [load_balancer_size]="" [backend_node_size]="" [backend_node_count]="");
+declare regions=("nyc1" "nyc2" "nyc3" "ams2" "ams3" "sfo1" "sfo2" "sgp1" "lon1" "fra1" "tor1" "blr1");
 
 # Get user input for Terraform variables
 function setVars() {
-  echo -e "Let's set up your Terraform variables.\n";
-  # Check for existing project folder
-  until [[ "${valid}" ]]; do
-    read -p "Please enter in your project name: " project_name;
-    if [[ -d "${HOME}/workspace/${project_name}" ]]; then
-      echo -e "\nLooks like project root ${HOME}/workspace/${project_name} already exists.\nTry using another name.\n";
-    else
-      project_dir=${HOME}/workspace/${project_name};
-      valid=true;
-    fi
-  done
-
-  unset valid;
-
+  read -p "Please enter in your project name: " terraform_vars[project_name];
   # Check for SSH key
   if [[ -f ${HOME}/.ssh/id_rsa ]]; then
     until [[ "${valid}" ]]; do
       read -p "${HOME}/.ssh/id_rsa has been located. Would you like to use it for your configuration? y/n: " response;
       case "${response}" in
         "Y"|"y")  private_key_path="${HOME}/.ssh/id_rsa";
-                  ssh_fingerprint=$(ssh-keygen -l -E md5 -f ~/.ssh/id_rsa | awk '{print $2}' | cut -d: -f 2-);
                   if [[ -f "${HOME}/.ssh/id_rsa.pub" ]]; then
                     public_key=$(cat ${HOME}/.ssh/id_rsa.pub);
                   else
                     echo -e "Unable to locate ${HOME}/.ssh/id_rsa.pub. Please create a new key pair or place them into ${HOME}/.ssh/";
-                    exit 2;
+                    exit 1;
                   fi
                   valid=true;
                   ;;
         "N"|"n")
                   read -p "Please enter in the full path to your private SSH key: " private_key_path;
-                  ssh_fingerprint=$(ssh-keygen -l -E md5 -f ~/.ssh/id_rsa | awk '{print $2}' | cut -d: -f 2-);
                   public_key=$(cat ${private_key_path}.*pub);
                   valid=true;
                   ;;
@@ -51,13 +34,10 @@ function setVars() {
   else
     ssh-keygen -t rsa -C "$(hostname -f)" -q -N "" -f ${HOME}/.ssh/id_rsa;
     private_key_path="${HOME}/.ssh/id_rsa";
-    ssh_fingerprint=$(ssh-keygen -l -E md5 -f ~/.ssh/id_rsa | awk '{print $2}' | cut -d: -f 2-);
     public_key=$(cat ${HOME}/.ssh/id_rsa.pub);
   fi
-  # Set the remaining variables
-  for x in "${tfvars_order[@]}"; do
-    read -p "please enter in your ${x}: " terraform_vars[${x}];
-  done
+
+    read -p "Please enter in your DigitalOcean API token: " terraform_vars[do_token];
 
   if [[ ! -f ${HOME}/.config/doctl/config.yaml ]]; then
     mkdir -p ${HOME}/.config/doctl/;
@@ -68,22 +48,131 @@ EOF
   chmod 600 ${HOME}/.config/doctl/config.yaml;
   fi
 
+  # Add new ssh key to cloud
   doctl compute ssh-key create $(hostname -f) --public-key "${public_key}";
-  # List ssh key ids
-  doctl compute ssh-key list
-  read -p "Enter in the ssh key if for this Droplet's hostname: " ssh_key_id;
+  # Grab ssh key id and ssh key fingerprint
+  key_array=($(doctl compute ssh-key list | grep "$(ssh-keygen -lf ${private_key_path} -E md5 | awk '{print $2}'| cut -d: -f2-)"));
 
-  read -p "Enter in a password to be used for ansible-vault: " vault_pass;
+  # Set up a password to be used for ansible-vault
+  until [[ ${valid} ]]; do
+    read -sp "Enter in a password to be used for ansible-vault: " vault_pass;
+    echo;
+    if [[ ! -z ${vault_pass} ]]; then
+      read -sp "Re-enter your ansible-vault password: " vault_pass_confirm;
+      if [[ ${vault_pass} == ${vault_pass_confirm} ]]; then
+        echo -e "\nYour ansible-vault password has been set.\n";
+        valid=true;
+      else
+        echo -e "\nThe passwords did not match. Please try again.\n";
+      fi
+    else
+      echo "You cannot use a blank password. Please try again.";
+    fi
+  done
+  unset valid
   # create ha_auth_key
   ha_auth_key=$(dd if='/dev/urandom' bs=512 count=1 2>'/dev/null' | openssl sha1 | awk '{print $2}')
 
-}
+  # Have the user select a data center region
+  until [[ ${valid} ]]; do
+cat << EOF
+Please select a data center.
+1)  New York 1
+2)  New York 2
+3)  New York 3
+4)  Amsterdam 2
+5)  Amsterdam 3
+6)  San Francisco 1
+7)  San Francisco 2
+8)  Singapore 1
+9)  London 1
+10) Frankfurt 1
+11) Toronto 1
+12) Bangalore 1
 
-# Set up project directory
-function projectCreate() {
-  mkdir -p ${project_dir};
-  git clone https://github.com/barajasfab/ha-standard-deploy ${project_dir}/;
-  cd ${project_dir};
+EOF
+
+    read -p "Enter in your choice: " dc_selection;
+    if (( ${dc_selection} > 0 && ${dc_selection} < 13 )) &>/dev/null; then
+      echo -e "\nData center is now set.\n";
+      valid=true;
+    else
+      echo -e "\nPlease enter in a valid choice.\n";
+    fi
+  done
+
+  unset valid
+  n=$(echo $(( ${dc_selection}-1 )));
+  terraform_vars[region]=${regions[${n}]};
+
+  # Setting the distro to ubuntu 16-04
+  terraform_vars[image_slug]="ubuntu-16-04-x64";
+
+  # Get size for load balancers
+  until [[ "${valid}" ]]; do
+cat << EOF
+Please select a Droplet size from the listing for your load balancers.
+1) 2gb
+2) 4gb
+3) 8gb
+4) 16gb
+5) 32gb
+EOF
+    read -p "Enter in your choice:" lb_size;
+
+    case "${lb_size}" in
+          1) terraform_vars[load_balancer_size]="2gb";
+             valid=true;
+            ;;
+          2) terraform_vars[load_balancer_size]="4gb";
+             valid=true;
+            ;;
+          3) terraform_vars[load_balancer_size]="8gb";
+             valid=true;
+            ;;
+          4) terraform_vars[load_balancer_size]="16gb";
+             valid=true;
+            ;;
+          5) terraform_vars[load_balancer_size]="32gb";
+             valid=true;
+            ;;
+          *)  echo -e "\nYou did not enter a valid choice. Please try again.\n";
+            ;;
+    esac
+  done
+  unset valid;
+
+  until [[ "${valid}" ]]; do
+cat << EOF
+Please select a Droplet size from the listing for your backend servers.
+1) 1gb
+2) 2gb
+3) 4gb
+4) 8gb
+
+EOF
+    read -p "Enter in your choice:" n_size;
+
+    case "${n_size}" in
+          1) terraform_vars[backend_node_size]="1gb";
+             valid=true;
+            ;;
+          2) terraform_vars[backend_node_size]="2gb";
+             valid=true;
+            ;;
+          3) terraform_vars[backend_node_size]="4gb";
+             valid=true;
+            ;;
+          4) terraform_vars[backend_node_size]="8gb";
+             valid=true;
+            ;;
+          *)  echo -e "\nYou did not enter a valid choice. Please try again.\n";
+            ;;
+    esac
+  done
+  unset valid;
+
+  read -p "Please enter then number of backend nodes you want to provision: " terraform_vars[backend_node_count];
 }
 
 # create terraform configuration
@@ -91,7 +180,7 @@ function terraConf() {
 cat << EOF > terraform.tfvars
 do_token = "${terraform_vars[do_token]}"
 
-project = "${project_name}"
+project = "${terraform_vars[project_name]}"
 
 /* region choices include: nyc1, nyc2, nyc3, ams2, ams3, sfo1, sgp1, lon1, fra1, tor1 */
 region = "${terraform_vars[region]}"
@@ -100,11 +189,11 @@ region = "${terraform_vars[region]}"
 Keep in mind the associated Ansible playbook was written to be executed on Ubuntu. */
 image_slug = "${terraform_vars[image_slug]}"
 
-keys = "${ssh_key_id}"
+keys = "${key_array[0]}"
 
 private_key_path = "${private_key_path}"
 
-ssh_fingerprint = "${ssh_fingerprint}"
+ssh_fingerprint = "${key_array[2]}"
 
 public_key = "${public_key}"
 
@@ -139,7 +228,7 @@ vault_ha_auth_key: ${ha_auth_key}
 EOF
 
   echo "${vault_pass}" > ${HOME}/.vaultpass.txt;
-  ansible-vault encrypt /tmp/${tmp_pass_file} --output ${project_dir}/group_vars/all/keys --vault-password-file=${HOME}/.vaultpass.txt;
+  ansible-vault encrypt /tmp/${tmp_pass_file} --output group_vars/all/keys --vault-password-file=${HOME}/.vaultpass.txt;
   rm -f /tmp/${tmp_pass_file};
 }
 
@@ -170,7 +259,6 @@ function deployNow() {
 
 # Execute functions
 setVars;
-projectCreate;
 terraConf;
 ansibleVars;
 ansibleVault;
