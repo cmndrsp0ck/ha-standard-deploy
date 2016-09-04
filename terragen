@@ -229,7 +229,7 @@ vault_ha_auth_key: ${ha_auth_key}
 EOF
 
   echo "${vault_pass}" > ${HOME}/.vaultpass.txt;
-  ansible-vault encrypt /tmp/${tmp_pass_file} --output group_vars/all/keys --vault-password-file=${HOME}/.vaultpass.txt;
+  ansible-vault encrypt /tmp/${tmp_pass_file} --output group_vars/all/keys --vault-password-file=${HOME}/.vaultpass.txt &>/dev/null;
   rm -f /tmp/${tmp_pass_file};
 }
 
