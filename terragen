@@ -117,6 +117,7 @@ Please select a Droplet size from the listing for your load balancers.
 3) 8gb
 4) 16gb
 5) 32gb
+
 EOF
     read -p "Enter in your choice:" lb_size;
 
