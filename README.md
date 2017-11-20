@@ -34,7 +34,7 @@ If you're provisioning a control Droplet, you can run the following cloud-config
       - zip
 
     runcmd:
-      - curl -o /tmp/terraform.zip https://releases.hashicorp.com/terraform/0.7.2/terraform_0.7.2_linux_amd64.zip
+      - curl -o /tmp/terraform.zip https://releases.hashicorp.com/terraform/0.11.0/terraform_0.11.0_linux_amd64.zip
       - unzip -d /usr/local/bin/ /tmp/terraform.zip
       - wget -O /tmp/terraform-inventory.zip https://github.com/adammck/terraform-inventory/releases/download/v0.6.1/terraform-inventory_v0.6.1_linux_amd64.zip
       - unzip -d /usr/local/bin/ /tmp/terraform-inventory.zip
@@ -70,7 +70,7 @@ Okay, now everything should be set up and you're ready to start provisioning and
 
 Once you have all the Prerequisite software installed or have executed the cloud-config script, you can log into the Droplet through SSH. I recommend you create a workspace directory such as `mkdir -p ~/workspace/project-name`. You can then run the following to clone the repo contents to your Droplet.
 
-    git clone https://github.com/barajasfab/ha-standard-deploy.git ~/workspace/project-name/
+    git clone https://github.com/cmndrsp0ck/ha-standard-deploy.git ~/workspace/project-name/
 
 Now all you'll have to do is `cd ~/workspace/project-name/` and execute `./terragen`. You'll be prompted for input such as your project name, your DigitalOcean API token, region, and so on.
 
