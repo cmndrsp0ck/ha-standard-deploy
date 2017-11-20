@@ -24,8 +24,8 @@ ssh_fingerprint = ""
 public_key = ""
 
 /* Enter the number of web nodes you wish to provision */
-node_count = "x"
+node_count = "2"
 
-node_size = "1gb"
+node_size = "2gb"
 
-lb_size = "2gb"
+lb_size = "c-2"

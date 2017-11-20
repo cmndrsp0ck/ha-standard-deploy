@@ -3,6 +3,8 @@ site.retry
 *.tfstate.*
 *.tfstate
 *.tfvars
+.terraform
+terraform.tfstate.d
 group_vars/all/load_balancer
 group_vars/all/keys
 group_vars/all/vars

@@ -1,2 +1,6 @@
 ---
 # defaults file for nginx_backend
+#sites:
+#  myapp1:
+#    doc_root: /var/www/html
+#    server_name: example.com www.example.com

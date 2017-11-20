@@ -38,7 +38,7 @@ If you're provisioning a control Droplet, you can run the following cloud-config
       - unzip -d /usr/local/bin/ /tmp/terraform.zip
       - wget -O /tmp/terraform-inventory.zip https://github.com/adammck/terraform-inventory/releases/download/v0.6.1/terraform-inventory_v0.6.1_linux_amd64.zip
       - unzip -d /usr/local/bin/ /tmp/terraform-inventory.zip
-      - wget -qO /tmp/doctl.tgz "https://github.com/digitalocean/doctl/releases/download/v1.4.0/doctl-1.4.0-linux-amd64.tar.gz" /usr/local/bin/
+      - wget -qO /tmp/doctl.tgz "https://github.com/digitalocean/doctl/releases/download/v1.7.1/doctl-1.7.1-linux-amd64.tar.gz" /usr/local/bin/
       - tar xzvf /tmp/doctl.tgz -C /usr/local/bin/
 
     package_update: true
@@ -48,21 +48,23 @@ If you're provisioning a control Droplet, you can run the following cloud-config
 
 Let's get Terraform ready to deploy. We're going to be using **terraform.tfvars** to store values required such as API key, project name, SSH data, the number of backend nodes you want, etc. The sample file **terraform.tfvars.sample** has been supplied, just remember to remove the appended _.sample_. Once you have your all of the variables set, Terraform should be able to authenticate and deploy your Droplets.
 
-Next we need to get Ansible set up by heading over to **group\_vars/all**. You can start by renaming **group\_vars/all/load\_balancer.sample** as **group\_vars/all/load\_balancer** and uncomment **do\_token** and **lb\_auth\_token** inside the file.
+Next we need to get Ansible set up by heading over to **group\_vars/all**. You can now create a file (any name will do. e.g. *vault*). Declare your **vault_** variables in this file.
 
-We're going to be using ansible-vault to securely store your API key. At this point you should already be in **group\_vars/all**, so you can now execute the following command, or something similar, in your terminal.
+We're going to be using ansible-vault to securely store your API key. In terminal, head over to **group\_vars/all**, and execute the following command.
 
-    $ ansible-vault create keys
+    $ ansible-vault create vault
 
 You will now be able to edit the file and set the values. The file should look something like this:
 
     ---
     vault_do_token: umvkl89wsxwuuz4a1nyzap5rsyk4un9fza5qokd7nzrn42owfclv8gdqk3k5gzqlz
-    vault_lb_auth_key: 0dgivsxomvb80sx3uvd6u42j3920pbvveik007ec8
+    vault_ha_auth_key: 0dgivsxomvb80sx3uvd6u42j3920pbvveik007ec8
 
-If needed, you can always go back in and edit the file by simply executing `$ ansible-vault create keys`. To prevent having to enter in `--ask-vault-pass` every time you execute your playbook, we'll set up your password file and store that outside of the repo. You can do so by running the following command.
+If needed, you can always go back in and edit the file by simply executing `$ ansible-vault edit vault`. To prevent having to enter in `--ask-vault-pass` every time you execute your playbook, we'll set up your password file and store that outside of the repo. You can do so by running the following command.
 
     $ echo 'password' > ~/.vaultpass.txt
+
+And set `vault_password_file = ~/.vaultpass.txt` in your ansible.cfg file.
 
 Okay, now everything should be set up and you're ready to start provisioning and configuring your Droplets.
 
@@ -76,7 +78,7 @@ Now all you'll have to do is `cd ~/workspace/project-name/` and execute `./terra
 
 #### Deploying
 
-We'll start by using Terraform. Make sure you head back to the repository home. You can run a quick check and create an execution plan by running `terraform plan`.
+We'll start by using Terraform. Make sure you head back to the repository root directory. You'll need to run `terraform init` to download the terraform plugins like the digitalocean and template providers. Once that's all set up you can run a quick check and create an execution plan by running `terraform plan`.
 
 Once you're ready, use `terraform apply` to build the Droplets and floating IP. This should take about a minute or two depending on how many nodes you're spinning up. Once it finishes up, wait about 45 seconds for the cloud-config commands that were passed in to complete.
 
