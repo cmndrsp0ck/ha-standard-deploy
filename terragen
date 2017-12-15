@@ -233,17 +233,15 @@ EOF
 
 # create vault file
 function ansibleVault() {
-  # create temp file
-  tmp_pass_file="pass_$(echo $(( (RANDOM % 30000) + 10000 )))_file";
 
-cat << EOF > /tmp/${tmp_pass_file}
+cat << EOF > group_vars/all/vault
 ---
 vault_do_token: ${terraform_vars[do_token]}
 vault_ha_auth_key: ${ha_auth_key}
 EOF
 
   echo "${vault_pass}" > ${HOME}/.vaultpass.txt;
-  ansible-vault encrypt /tmp/${tmp_pass_file} --output group_vars/all/keys --vault-password-file=${HOME}/.vaultpass.txt;
+  ansible-vault encrypt group_vars/all/vault;
   rm -f /tmp/${tmp_pass_file};
 }
 
