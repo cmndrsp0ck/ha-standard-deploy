@@ -252,7 +252,8 @@ function deployNow() {
   until [[ "${valid}" ]]; do
     read -p "Would you like to deploy now? y/n: " deploy;
     case "${deploy}" in
-        "Y"|"y")  terraform apply;
+        "Y"|"y")  terraform init
+									terraform apply;
                   echo -en "\nWaiting for cloud-config to complete.";
                   for i in {1..45}; do
                     printf ".";
@@ -263,7 +264,7 @@ function deployNow() {
                   echo -e "\n Congratulations! You now have your initial load balancers and backend nodes set up. Your public floating IP is ${fip}.";
                   valid=true;
             ;;
-        "N"|"n")  echo -e "\nTo complete your deployment, navigate over to ${project_dir} and execute 'terraform apply', then 'ansible-playbook -i /usr/local/bin/terraform-inventory site.yml;'. Goodbye!";
+        "N"|"n")  echo -e "\nTo complete your deployment, navigate over to ${project_dir} and execute 'terraform init', 'terraform apply', then 'ansible-playbook -i /usr/local/bin/terraform-inventory site.yml;'. Goodbye!";
                   valid=true;
             ;;
         *)        echo -e "\nPlease enter in a valid choice.\n"
