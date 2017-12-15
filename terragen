@@ -242,7 +242,6 @@ EOF
 
   echo "${vault_pass}" > ${HOME}/.vaultpass.txt;
   ansible-vault encrypt group_vars/all/vault;
-  rm -f /tmp/${tmp_pass_file};
 }
 
 # prompt user to execute scripts
